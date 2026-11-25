@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14161a">
+<title>待办板</title>
+<style>
+:root{
+  --bg:#14161a; --card:#1d2027; --card2:#23272f; --line:#2e333d;
+  --fg:#e8ebf0; --dim:#8b93a1; --hi:#4ea1ff; --ok:#3fbf7f; --doing:#f0b13c;
+  --bad:#ff6b6b; --low:#7a8494;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+  font:15px/1.55 -apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+body{padding:12px 12px 88px;max-width:720px;margin:0 auto}
+h1{font-size:18px;margin:4px 0 12px;display:flex;align-items:center;gap:8px}
+h1 .dot{width:9px;height:9px;border-radius:50%;background:var(--hi);flex:none}
+h1 small{font-weight:400;font-size:12px;color:var(--dim);margin-left:auto}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.panel h2{font-size:13px;color:var(--dim);margin:0 0 10px;font-weight:600;letter-spacing:.4px}
+label{display:block;font-size:12px;color:var(--dim);margin:8px 0 4px}
+input,select,textarea,button{font:inherit;color:var(--fg)}
+input[type=text],input[type=password],select,textarea{
+  width:100%;background:var(--card2);border:1px solid var(--line);border-radius:9px;
+  padding:10px 11px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--hi)}
+textarea{resize:vertical;min-height:64px}
+button{background:var(--card2);border:1px solid var(--line);border-radius:9px;
+  padding:9px 14px;cursor:pointer;active:none}
+button:hover{border-color:#3f4654}
+button.primary{background:var(--hi);border-color:var(--hi);color:#08111f;font-weight:600}
+button.ghost{background:transparent}
+button.danger{color:var(--bad);border-color:#4a2b2b}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grow{flex:1 1 auto;min-width:0}
+#newLevel{flex:0 0 82px;width:82px}
+#btnAdd{flex:0 0 66px}
+
+.bar{height:7px;border-radius:4px;background:#0c0e12;overflow:hidden;border:1px solid var(--line)}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,#3fbf7f,#4ea1ff);width:0%}
+.stat{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--dim);margin-top:9px}
+.stat b{color:var(--fg);font-weight:600}
+
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.item.done{opacity:.62}
+.head{display:flex;gap:10px;align-items:flex-start;padding:11px 12px}
+.tick{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid #4a5262;
+  margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:13px;line-height:1;color:transparent;transition:.15s}
+.tick:hover{border-color:var(--ok)}
+.item.done .tick{background:var(--ok);border-color:var(--ok);color:#06140d}
+.item.doing .tick{border-color:var(--doing)}
+.txt{flex:1 1 auto;min-width:0;cursor:pointer}
+.txt .t{word-break:break-word}
+.item.done .txt .t{text-decoration:line-through;text-decoration-color:#5b6472}
+.meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;font-size:11px;color:var(--dim);align-items:center}
+.badge{padding:1px 7px;border-radius:20px;border:1px solid var(--line);background:var(--card2);font-size:11px}
+.b-high{color:#ff9a9a;border-color:#4a2b2b}
+.b-mid{color:#f0d08c;border-color:#4a402b}
+.b-low{color:var(--low)}
+.s-todo{color:var(--dim)} .s-doing{color:var(--doing);border-color:#4a402b}
+.s-done{color:var(--ok);border-color:#22452f}
+.mini{height:5px;border-radius:3px;background:#0c0e12;overflow:hidden;margin-top:7px;border:1px solid var(--line)}
+.mini>i{display:block;height:100%;background:var(--hi)}
+.chev{flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+  color:var(--dim);cursor:pointer;font-size:12px}
+
+.body{border-top:1px solid var(--line);padding:11px 12px;background:#191c22;display:none}
+.item.open .body{display:block}
+.body .sec{margin-bottom:12px}
+.body .sec:last-child{margin-bottom:0}
+.body .sec h3{font-size:12px;color:var(--dim);margin:0 0 6px;font-weight:600}
+.note{white-space:pre-wrap;color:#c8ceda;font-size:13.5px}
+.step{display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:13.5px;cursor:pointer}
+.step .box{flex:none;width:16px;height:16px;border-radius:4px;border:2px solid #4a5262;margin-top:2px;
+  display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent}
+.step.on .box{background:var(--ok);border-color:var(--ok);color:#06140d}
+.step.on span{text-decoration:line-through;color:var(--dim)}
+.logline{font-size:12.5px;color:#aab2c0;padding:3px 0;border-bottom:1px dashed #262b34}
+.logline:last-child{border-bottom:0}
+.logline time{color:#6f7787;margin-right:6px;font-variant-numeric:tabular-nums}
+.logline em{color:var(--hi);font-style:normal;margin-right:6px}
+
+.empty{text-align:center;color:var(--dim);font-size:13px;padding:22px 8px}
+
+/* 底部固定条 */
+footer{position:fixed;left:0;right:0;bottom:0;background:rgba(20,22,26,.94);
+  border-top:1px solid var(--line);padding:9px 14px calc(9px + env(safe-area-inset-bottom));
+  display:flex;gap:10px;align-items:center;font-size:12px;color:var(--dim);backdrop-filter:blur(6px)}
+footer .grow{text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:78px;background:#2a2f39;
+  border:1px solid #3a4150;color:var(--fg);padding:9px 15px;border-radius:22px;font-size:13px;
+  box-shadow:0 8px 24px rgba(0,0,0,.45);opacity:0;transition:.2s;pointer-events:none;max-width:86vw;z-index:9}
+.toast.show{opacity:1}
+.toast.bad{border-color:#5a3030;color:#ffc9c9}
+.hide{display:none !important}
+@media (max-width:420px){
+  body{padding:10px 10px 84px}
+  .row{flex-wrap:wrap}
+  #newText{flex:1 1 100%}
+  #newLevel{flex:1 1 0;width:auto}
+  #btnAdd{flex:1 1 0}
+}
+</style>
+</head>
+<body>
+
+<h1><span class="dot"></span>待办板 <small id="whoami">未配置</small></h1>
+
+<!-- 设置 -->
+<div class="panel" id="setup">
+  <h2>连接（只存本机这份浏览器里）</h2>
+  <label>仓库 owner</label>
+  <input type="text" id="fOwner" placeholder="LEBUSE992" autocomplete="off" spellcheck="false">
+  <label>仓库名</label>
+  <input type="text" id="fRepo" placeholder="dsh-board" autocomplete="off" spellcheck="false">
+  <label>Token（fine-grained · 只要 Contents: Read and write）</label>
+  <input type="password" id="fToken" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
+  <div class="row" style="margin-top:12px">
+    <button class="primary grow" id="btnSave">保存并连接</button>
+    <button class="ghost" id="btnForget">清掉</button>
+  </div>
+  <div class="meta" style="margin-top:8px">token 只读写这一个仓库的 todos.json / board.html，不进任何日志。</div>
+</div>
+
+<!-- 统计 -->
+<div class="panel" id="stats" style="padding:12px 12px 11px">
+  <div class="bar"><i id="barFill"></i></div>
+  <div class="stat"><span>已完成 <b id="nDone">0</b> / 共 <b id="nAll">0</b></span>
+    <span style="margin-left:auto"><b id="pct">0%</b></span></div>
+</div>
+
+<!-- 加一条 -->
+<div class="panel">
+  <div class="row">
+    <input type="text" id="newText" class="grow" placeholder="想到什么，写这儿…" autocomplete="off">
+    <select id="newLevel">
+      <option value="high">高</option>
+      <option value="mid" selected>中</option>
+      <option value="low">低</option>
+    </select>
+    <button class="primary" id="btnAdd">加</button>
+  </div>
+</div>
+
+<!-- 列表 -->
+<div id="listTodo"></div>
+<div class="panel" id="doneWrap" style="padding:0">
+  <div class="row" id="doneToggle" style="padding:11px 12px;cursor:pointer;gap:8px">
+    <span id="doneChev">▸</span>
+    <span class="grow">已完成 <span id="doneCount">0</span> 条</span>
+    <span style="font-size:12px;color:var(--dim)">点开</span>
+  </div>
+  <div id="listDone" class="hide" style="padding:0 8px 8px"></div>
+</div>
+
+<footer>
+  <button class="ghost" id="btnRefresh" style="padding:6px 10px;font-size:12px">刷新</button>
+  <div class="grow" id="syncState">未连接</div>
+  <button class="ghost" id="btnGear" style="padding:6px 10px;font-size:12px">⚙</button>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const LS = 'dshBoard.v1';
+const state = { owner:'', repo:'', token:'', branch:'main', todos:[], sha:null, lastSync:null,
+                offline:false, busy:false, open:new Set(), doneOpen:false };
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- 浏览器侧的 utf8 <-> base64 ---------- */
+function b64enc(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  return btoa(bin);
+}
+function b64dec(b64){
+  const bin = atob(String(b64 || '').replace(/\s+/g, ''));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+function toast(msg, bad){
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (bad ? ' bad' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 2600);
+}
+
+/* ---------- GitHub REST（带 3 次网络重试，45 秒超时） ---------- */
+async function gh(method, path, body){
+  // 末尾拼一个时间戳：GitHub 的 contents 接口会带 Cache-Control，浏览器会把 GET 缓存起来，
+  // 缓存住就会拿到旧 sha → 写的时候一律 409。这一行不能省。
+  const url = 'https://api.github.com' + path;
+  let lastErr = null;
+  for (let attempt = 1; attempt <= 3; attempt++){
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 45000);
+    try{
+      const res = await fetch(url, {
+        method,
+        cache: 'no-store',
+        headers: {
+          'authorization': 'Bearer ' + state.token,
+          'accept': 'application/vnd.github+json',
+          'content-type': 'application/json'
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: ac.signal
+      });
+      const text = await res.text();
+      clearTimeout(timer);
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch { json = { raw: text.slice(0, 300) }; }
+      if (res.status >= 500 && attempt < 2){ lastErr = new Error('服务端 ' + res.status); await sleep(1000); continue; }
+      return { status: res.status, json, attempt };
+    }catch(e){
+      clearTimeout(timer);
+      lastErr = new Error(e.name === 'AbortError' ? '请求超时（45 秒）' : (e.message || '网络错误'));
+      if (attempt < 3){ await sleep(1500 * attempt); continue; }
+    }
+  }
+  throw lastErr || new Error('网络错误');
+}
+
+const contentsPath = name => '/repos/' + encodeURIComponent(state.owner) + '/' + encodeURIComponent(state.repo)
+  + '/contents/' + encodeURIComponent(name);
+
+/* ---------- 拉 ---------- */
+async function pull(){
+  const r = await gh('GET', contentsPath('todos.json') + '?ref=' + encodeURIComponent(state.branch) + '&_=' + Date.now());
+  if (r.status === 404){ state.todos = []; state.rawText = ''; state.sha = null; state.offline = false; return {created:false}; }
+  if (r.status === 401 || r.status === 403) throw new Error('凭据被拒（HTTP ' + r.status + '）· token 或权限不对');
+  if (r.status !== 200) throw new Error('拉取失败 HTTP ' + r.status + '：' + JSON.stringify(r.json).slice(0, 160));
+  const raw = b64dec(r.json.content);
+  const list = JSON.parse(raw);
+  if (!Array.isArray(list)) throw new Error('仓库里的 todos.json 不是数组');
+  state.todos = list;
+  state.rawText = raw;
+  state.sha = r.json.sha;
+  state.offline = false;
+  state.lastSync = new Date();
+  localStorage.setItem(LS + '.cache', JSON.stringify({ at: Date.now(), todos: list }));
+  return { created:true };
+}
+
+/* ---------- 写：幂等 + 多轮（GitHub 的 Contents PUT 会间歇回 500） ----------
+   每一轮都先重新拉：内容已经是目标就算成功（上一轮可能写进去了但服务端报错）；
+   冲突 409/422 重新拿 sha 再来；5xx 等一会儿下一轮。                            */
+const GAPS = [0, 2000, 5000, 10000];
+async function commit(mutate, message){
+  if (state.busy) throw new Error('上一个操作还没落地，等一下');
+  state.busy = true;
+  setBusy(true);
+  let conflict = 0, err5xx = 0;
+  const say2 = (t) => { $('syncState').textContent = t; };
+  try{
+    for (let round = 0; round < GAPS.length; round++){
+      if (GAPS[round]) await sleep(GAPS[round]);
+      if (round) say2('写入中… 第 ' + (round + 1) + ' 次尝试');
+      try { await pull(); }
+      catch (e){ err5xx++; say2('写入中… 拉取失败，重试'); continue; }
+
+      const copy = JSON.parse(JSON.stringify(state.todos));
+      const next = mutate(copy);
+      if (next === null) return { noop:true };
+      const text = JSON.stringify(next, null, 2) + '\n';
+      if (state.rawText && state.rawText === text) return { ok:true, already:true, round: round + 1 };
+
+      const r = await gh('PUT', contentsPath('todos.json'), {
+        message, content: b64enc(text), sha: state.sha, branch: state.branch
+      });
+      if (r.status === 200 || r.status === 201){
+        state.todos = next;
+        state.rawText = text;
+        state.sha = r.json.content.sha;
+        state.lastSync = new Date();
+        localStorage.setItem(LS + '.cache', JSON.stringify({ at: Date.now(), todos: next }));
+        return { ok:true, conflict, err5xx, round: round + 1 };
+      }
+      if (r.status === 409 || r.status === 422){ conflict++; say2('有人同时在写，重试…'); continue; }
+      if (r.status >= 500){ err5xx++; say2('GitHub 那头抖了（' + r.status + '），再试…'); continue; }
+      throw new Error('写入失败 HTTP ' + r.status + '：' + JSON.stringify(r.json).slice(0, 200));
+    }
+    throw new Error('试了 ' + GAPS.length + ' 轮都没成（失败 ' + err5xx + ' 次）· 网络或 GitHub 那头太不稳，稍后再点一次');
+  } finally {
+    state.busy = false;
+    setBusy(false);
+    render();
+  }
+}
+
+/* ---------- 渲染 ---------- */
+const LV = { high:'高', mid:'中', low:'低' };
+const ST = { todo:'未完成', doing:'进行中', done:'已完成', dropped:'不要了' };
+const progOf = o => typeof o.progress === 'number' ? o.progress
+  : (o.status === 'done' ? 100 : o.status === 'doing' ? 50 : 0);
+const fmtT = iso => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const p = n => String(n).padStart(2, '0');
+  return (d.getMonth() + 1) + '/' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+};
+
+function itemHtml(o){
+  const pct = progOf(o);
+  const hasSteps = Array.isArray(o.steps) && o.steps.length;
+  const cls = 'item' + (o.status === 'done' ? ' done' : '') + (o.status === 'doing' ? ' doing' : '')
+    + (state.open.has(o.id) ? ' open' : '');
+  const stepsH = hasSteps ? '<div class="sec"><h3>子步骤 ' + o.steps.filter(s => s.done).length + ' / ' + o.steps.length + '</h3>'
+    + o.steps.map((s, i) => '<div class="step' + (s.done ? ' on' : '') + '" data-step="' + i + '"><span class="box">✓</span><span>'
+      + esc(s.text) + '</span></div>').join('') + '</div>' : '';
+  const logH = (Array.isArray(o.log) && o.log.length) ? '<div class="sec"><h3>都做了什么</h3>'
+    + o.log.map(l => '<div class="logline"><time>' + esc(fmtT(l.at)) + '</time>'
+      + (l.who ? '<em>' + esc(l.who) + '</em>' : '') + esc(l.text) + '</div>').join('') + '</div>' : '';
+  return '<div class="' + cls + '" data-id="' + esc(o.id) + '">'
+    + '<div class="head">'
+      + '<div class="tick" data-act="tick" title="勾完成">✓</div>'
+      + '<div class="txt" data-act="expand"><div class="t">' + esc(o.text) + '</div>'
+        + '<div class="meta">'
+          + '<span class="badge b-' + esc(o.level || 'mid') + '">' + (LV[o.level] || '中') + '</span>'
+          + '<span class="badge s-' + esc(o.status || 'todo') + '">' + (ST[o.status] || '未完成') + '</span>'
+          + (o.status === 'doing' && !hasSteps ? '<span>' + pct + '%</span>' : '')
+          + (o.level === 'high' && o.status !== 'done' ? '<span style="color:#ff9a9a">要紧</span>' : '')
+          + (o.createdAt ? '<span>' + esc(fmtT(o.createdAt)) + '</span>' : '')
+        + '</div>'
+        + (hasSteps && o.status !== 'done' ? '<div class="mini"><i style="width:' + pct + '%"></i></div>' : '')
+      + '</div>'
+      + '<div class="chev" data-act="expand">▾</div>'
+    + '</div>'
+    + '<div class="body">'
+      + (o.note ? '<div class="sec"><h3>备注</h3><div class="note">' + esc(o.note) + '</div></div>' : '')
+      + stepsH + logH
+      + '<div class="sec"><div class="row">'
+        + '<button class="ghost" data-act="edit">改文字</button>'
+        + '<button class="ghost" data-act="note">改备注</button>'
+        + (o.status === 'doing'
+            ? '<button class="ghost" data-act="undothat">取消进行中</button>'
+            : '<button class="ghost" data-act="doing">标进行中</button>')
+        + '<button class="danger" data-act="del">删除</button>'
+      + '</div></div>'
+    + '</div></div>';
+}
+
+function render(){
+  const all = state.todos;
+  const pend = all.filter(o => o.status !== 'done');
+  const done = all.filter(o => o.status === 'done');
+  const pct = all.length ? Math.round(done.length / all.length * 100) : 0;
+
+  $('nAll').textContent = all.length;
+  $('nDone').textContent = done.length;
+  $('pct').textContent = pct + '%';
+  $('barFill').style.width = pct + '%';
+  $('doneCount').textContent = done.length;
+
+  $('listTodo').innerHTML = pend.length ? pend.map(itemHtml).join('')
+    : '<div class="empty">未完成的都清干净了</div>';
+  $('listDone').innerHTML = done.length ? done.map(itemHtml).join('') : '<div class="empty">还没有完成的</div>';
+  $('listDone').className = state.doneOpen ? '' : 'hide';
+  $('doneChev').textContent = state.doneOpen ? '▾' : '▸';
+
+  const s = $('syncState');
+  if (state.offline){
+    s.innerHTML = '离线缓存（只读）· ' + (state.lastSync ? fmtT(state.lastSync) : '没有时间') + ' · 共 ' + all.length + ' 条';
+  } else if (state.lastSync){
+    s.innerHTML = '最近同步 ' + fmtT(state.lastSync) + ' · 共 ' + all.length + ' 条';
+  } else {
+    s.textContent = '未连接';
+  }
+  $('whoami').textContent = state.owner ? (state.owner + '/' + state.repo) : '未配置';
+  $('setup').classList.toggle('hide', !!state.token);
+  $('stats').classList.toggle('hide', !state.token);
+}
+
+function setBusy(b){
+  ['btnAdd','btnRefresh','btnSave','btnForget'].forEach(id => { const e = $(id); if (e) e.disabled = b; });
+  document.querySelectorAll('[data-act]').forEach(e => { e.style.pointerEvents = b ? 'none' : ''; });
+}
+
+/* ---------- 动作 ---------- */
+function newId(list){
+  const d = new Date(); const p = n => String(n).padStart(2, '0');
+  const day = '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate());
+  const base = 't-' + day + '-' + p(d.getHours()) + p(d.getMinutes());
+  let n = 1;
+  while (list.some(o => o.id === base + '-' + n)) n++;
+  return base + '-' + n;
+}
+
+async function addTodo(){
+  const text = $('newText').value.trim();
+  if (!text) { toast('写点东西再加', true); return; }
+  const level = $('newLevel').value;
+  $('btnAdd').disabled = true;
+  try{
+    await commit(list => {
+      list.push({ id:newId(list), text, level, note:'', status:'todo', progress:0,
+                  steps:[], log:[], links:[], createdAt:new Date().toISOString(), completedAt:null });
+      return list;
+    }, 'add: ' + text.slice(0, 40));
+    $('newText').value = '';
+    toast('加好了');
+  }catch(e){ toast('没加上：' + e.message, true); }
+  finally { $('btnAdd').disabled = false; }
+}
+
+async function act(id, name, el){
+  const o = () => state.todos.find(x => x.id === id);
+  try{
+    if (name === 'expand'){
+      state.open.has(id) ? state.open.delete(id) : state.open.add(id);
+      render(); return;
+    }
+    if (name === 'tick'){
+      const cur = o(); if (!cur) return;
+      const to = cur.status === 'done' ? 'todo' : 'done';
+      await commit(list => {
+        const t = list.find(x => x.id === id); if (!t) return null;
+        t.status = to;
+        if (to === 'done'){ t.completedAt = new Date().toISOString(); t.progress = 100; }
+        else { t.completedAt = null; t.progress = t.steps && t.steps.length ? t.progress : 0; }
+        return list;
+      }, (to === 'done' ? 'done: ' : 'reopen: ') + cur.text.slice(0, 30));
+      toast(to === 'done' ? '勾掉了' : '又放回未完成'); return;
+    }
+    if (name === 'doing' || name === 'undothat'){
+      await commit(list => {
+        const t = list.find(x => x.id === id); if (!t) return null;
+        t.status = name === 'doing' ? 'doing' : 'todo';
+        if (!(t.steps && t.steps.length)) t.progress = name === 'doing' ? 50 : 0;
+        return list;
+      }, (name === 'doing' ? 'doing: ' : 'todo: ') + id);
+      toast(name === 'doing' ? '标成进行中了' : '回到未完成'); return;
+    }
+    if (name === 'edit'){
+      const cur = o(); if (!cur) return;
+      const v = prompt('改文字：', cur.text);
+      if (v == null || !v.trim()) return;
+      await commit(list => { const t = list.find(x => x.id === id); if (!t) return null; t.text = v.trim(); return list; },
+        'edit: ' + v.trim().slice(0, 30));
+      toast('改了'); return;
+    }
+    if (name === 'note'){
+      const cur = o(); if (!cur) return;
+      const v = prompt('改备注：', cur.note || '');
+      if (v == null) return;
+      await commit(list => { const t = list.find(x => x.id === id); if (!t) return null; t.note = v; return list; },
+        'note: ' + id);
+      toast('备注存了'); return;
+    }
+    if (name === 'del'){
+      const cur = o(); if (!cur) return;
+      if (!confirm('删掉这条？\n\n' + cur.text + '\n\n删了就没了（仓库里的历史还能翻回来）。')) return;
+      await commit(list => list.filter(x => x.id !== id), 'del: ' + cur.text.slice(0, 30));
+      state.open.delete(id);
+      toast('删了'); return;
+    }
+    if (name === 'step'){
+      const i = Number(el.dataset.step);
+      await commit(list => {
+        const t = list.find(x => x.id === id); if (!t || !t.steps || !t.steps[i]) return null;
+        t.steps[i].done = !t.steps[i].done;
+        const d = t.steps.filter(s => s.done).length;
+        t.progress = Math.round(d / t.steps.length * 100);
+        if (t.progress === 100 && t.status !== 'done'){ t.status = 'done'; t.completedAt = new Date().toISOString(); }
+        else if (t.progress < 100 && t.status === 'done'){ t.status = 'doing'; t.completedAt = null; }
+        else if (t.progress > 0 && t.status === 'todo') t.status = 'doing';
+        return list;
+      }, 'step: ' + id);
+      toast('步骤变了'); return;
+    }
+  }catch(e){
+    toast('没成：' + e.message, true);
+  }
+}
+
+/* ---------- 连接 ---------- */
+async function connect(owner, repo, token){
+  state.owner = owner; state.repo = repo; state.token = token;
+  localStorage.setItem(LS, JSON.stringify({ owner, repo, token }));
+  setBusy(true);
+  try{
+    const r = await pull();
+    if (r.created === false && !state.sha){
+      // 仓库里还没有 todos.json —— 放一个空数组进去
+      const res = await gh('PUT', contentsPath('todos.json'), {
+        message: 'init: 空待办板', content: b64enc('[]\n'), branch: state.branch
+      });
+      if (res.status !== 201 && res.status !== 200) throw new Error('初始化失败 HTTP ' + res.status);
+      state.sha = res.json.content.sha;
+    }
+    toast('连上了');
+  }catch(e){
+    toast('连不上：' + e.message, true);
+  }finally{
+    setBusy(false); render();
+  }
+}
+
+function loadLocal(){
+  try{
+    const c = JSON.parse(localStorage.getItem(LS) || 'null');
+    if (c && c.owner && c.repo && c.token){
+      state.owner = c.owner; state.repo = c.repo; state.token = c.token;
+      $('fOwner').value = c.owner; $('fRepo').value = c.repo; $('fToken').value = c.token;
+    }
+    const cache = JSON.parse(localStorage.getItem(LS + '.cache') || 'null');
+    if (cache && Array.isArray(cache.todos)){
+      state.todos = cache.todos;
+      state.lastSync = new Date(cache.at);
+      state.offline = true;
+    }
+  }catch{}
+}
+
+/* ---------- 事件 ---------- */
+document.addEventListener('click', ev => {
+  const actEl = ev.target.closest('[data-act]');
+  if (actEl){
+    const item = actEl.closest('.item');
+    if (item) act(item.dataset.id, actEl.dataset.act, actEl);
+    return;
+  }
+  const stepEl = ev.target.closest('[data-step]');
+  if (stepEl){
+    const item = stepEl.closest('.item');
+    if (item) act(item.dataset.id, 'step', stepEl);
+    return;
+  }
+  if (ev.target.closest('#doneToggle')){ state.doneOpen = !state.doneOpen; render(); }
+});
+
+$('btnSave').onclick = () => {
+  const owner = $('fOwner').value.trim(), repo = $('fRepo').value.trim(), token = $('fToken').value.trim();
+  if (!owner || !repo || !token){ toast('三个框都要填', true); return; }
+  connect(owner, repo, token);
+};
+$('btnForget').onclick = () => {
+  if (!confirm('清掉这台设备上存的 owner / repo / token？')) return;
+  localStorage.removeItem(LS); localStorage.removeItem(LS + '.cache');
+  state.token = ''; state.todos = []; state.sha = null; state.lastSync = null; state.offline = false;
+  $('fToken').value = ''; render(); toast('清掉了');
+};
+$('btnAdd').onclick = addTodo;
+$('newText').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+$('btnRefresh').onclick = async () => {
+  setBusy(true);
+  try{ await pull(); toast('同步好了'); }
+  catch(e){ toast('同步失败：' + e.message, true); }
+  finally{ setBusy(false); render(); }
+};
+$('btnGear').onclick = () => {
+  $('setup').classList.toggle('hide');
+  if (!$('setup').classList.contains('hide')) $('fToken').focus();
+};
+
+/* ---------- 起 ---------- */
+loadLocal();
+render();
+if (state.token){
+  setBusy(true);
+  pull().then(() => { state.offline = false; }).catch(e => { state.offline = !!state.todos.length; toast('同步失败：' + e.message, true); })
+       .finally(() => { setBusy(false); render(); });
+}
+</script>
+</body>
+</html>
